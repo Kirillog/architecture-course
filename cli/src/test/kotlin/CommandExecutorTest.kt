@@ -1,6 +1,7 @@
 import org.junit.jupiter.api.Assertions.*
 
 class CommandExecutorTest {
+    private val env = MockEnvironment()
     private val executor = CommandExecutor()
 
     @org.junit.jupiter.api.Test
@@ -8,20 +9,20 @@ class CommandExecutorTest {
         val middleBuffer = Buffer()
         val outputBuffer = Buffer()
         val executionResult = executor.executeCommands(listOf(
-            EchoCommand(MockIStream(), middleBuffer, MockOStream(), listOf("a")),
-            CatCommand(middleBuffer, outputBuffer, MockOStream(), emptyList())
+            EchoCommand(env, MockIStream(), middleBuffer, MockOStream(), listOf("testdir")),
+            CatCommand(env, middleBuffer, outputBuffer, MockOStream(), emptyList())
         ))
 
         assertEquals(false, executionResult.terminate)
         assertEquals(0, executionResult.returnCode)
-        assertEquals("a", outputBuffer.readLine())
+        assertEquals("testdir", outputBuffer.readLine())
     }
 
     @org.junit.jupiter.api.Test
     fun `execute sequence of commands with exit`() {
         val executionResult = executor.executeCommands(listOf(
-            ExitCommand(MockIStream(), MockOStream(), MockOStream(), listOf()),
-            ExternalCommand(MockIStream(), MockOStream(), MockOStream(), listOf("abcdef"))
+            ExitCommand(env, MockIStream(), MockOStream(), MockOStream(), listOf()),
+            ExternalCommand(env, MockIStream(), MockOStream(), MockOStream(), listOf("abcdef"))
         ))
 
         assertEquals(true, executionResult.terminate)
@@ -31,7 +32,7 @@ class CommandExecutorTest {
     @org.junit.jupiter.api.Test
     fun `non zero exit code`() {
         val executionResult = executor.executeCommands(listOf(
-            ExternalCommand(MockIStream(), MockOStream(), MockOStream(), listOf("abcdef"))
+            ExternalCommand(Environment(), MockIStream(), MockOStream(), MockOStream(), listOf("abcdef"))
         ))
 
         assertEquals(false, executionResult.terminate)

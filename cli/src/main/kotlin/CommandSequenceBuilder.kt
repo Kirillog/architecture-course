@@ -1,6 +1,6 @@
 import com.xenomachina.argparser.ArgParser
 
-class CommandSequenceBuilder(private val envWriter: EnvironmentWriter) {
+class CommandSequenceBuilder(private val env: IEnvironment) {
     fun buildCommands(descriptions: List<CommandDescription>): List<Command> {
         var currentIStream = stdinAsIStream()
         val stdoutStream = stdoutAsOStream()
@@ -26,17 +26,13 @@ class CommandSequenceBuilder(private val envWriter: EnvironmentWriter) {
         val argumentsToDrop = if (description.type == CommandType.External || description.type == CommandType.Assign) 0 else 1
         val args = description.description.drop(argumentsToDrop)
 
-        if (description.type == CommandType.Assign) {
-            return AssignCommand(inputStream, outputStream, errorStream, args, envWriter)
-        }
-
         if (description.type == CommandType.Grep) {
             return try {
                 val flags = ArgParser(args.toTypedArray()).parseInto(::GrepArgs)
-                GrepCommand(inputStream, outputStream, errorStream, args, flags)
+                GrepCommand(env, inputStream, outputStream, errorStream, args, flags)
             } catch (e: Exception) {
                 println("Cannot parse flags for grep command: ${e.message}")
-                GrepCommand(inputStream, outputStream, errorStream, args, null)
+                GrepCommand(env, inputStream, outputStream, errorStream, args, null)
             }
         }
 
@@ -47,9 +43,10 @@ class CommandSequenceBuilder(private val envWriter: EnvironmentWriter) {
             CommandType.PWD -> ::PWDCommand
             CommandType.Exit -> ::ExitCommand
             CommandType.External -> ::ExternalCommand
+            CommandType.Assign -> ::AssignCommand
             else -> throw IllegalArgumentException("Unsupported command")
         }
 
-        return commandConstructor(inputStream, outputStream, errorStream, args)
+        return commandConstructor(env, inputStream, outputStream, errorStream, args)
     }
 }

@@ -8,6 +8,7 @@ class CatCommandTest {
         val outputBuffer = StringBuilder()
         val inputFileText = object {}::class.java.getResource("statement.txt").readText()
         val command = CatCommand(
+            Environment(),
             inputFileText.asIStream(),
             outputBuffer.asOStream(),
             MockOStream(),
@@ -23,6 +24,7 @@ class CatCommandTest {
         val fileName = "statement.txt"
         val resourcesPath = Paths.get("src", "test", "resources").toString()
         val command = CatCommand(
+            Environment(),
             MockIStream(),
             outputBuffer.asOStream(),
             MockOStream(),

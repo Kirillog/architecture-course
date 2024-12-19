@@ -9,6 +9,7 @@ class GrepCommandTest {
         val flags = ArgParser(args.toTypedArray()).parseInto(::GrepArgs)
         val outputBuffer = StringBuilder()
         val command = GrepCommand(
+            Environment(),
             MockIStream(),
             outputBuffer.asOStream(),
             MockOStream(),

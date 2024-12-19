@@ -5,11 +5,11 @@ class AssignCommandTest {
     fun `test assign command`() {
         val env = Environment()
         val command = AssignCommand(
+            env,
             MockIStream(),
             MockOStream(),
             MockOStream(),
             listOf("variableName", "variableValue"),
-            env
         )
         command.execute()
         assertEquals("variableValue", env.getVariable("variableName"))

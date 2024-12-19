@@ -1,7 +1,6 @@
-import java.io.File
+import java.nio.file.InvalidPathException
 import java.nio.file.Paths
-import java.util.*
-import kotlin.math.max
+import kotlin.io.path.*
 import kotlin.math.min
 
 interface Command {
@@ -9,16 +8,18 @@ interface Command {
     val inputStream: IStream
     val outputStream: OStream
     val errorStream: OStream
+    val environment: IEnvironment
     fun execute(): ExecutionResult
 
-    fun extractInputStream() : IStream = when (args.size) {
-        1 -> File(args[0]).asIStream()
+    fun extractInputStream(): IStream = when (args.size) {
+        1 -> environment.currentDirectory.resolve(args[0]).toFile().asIStream()
         0 -> inputStream
         else -> throw IllegalArgumentException("Incorrect number of arguments")
     }
 }
 
 class CatCommand(
+    override val environment: IEnvironment,
     override val inputStream: IStream,
     override val outputStream: OStream,
     override val errorStream: OStream,
@@ -39,6 +40,7 @@ class CatCommand(
 }
 
 class WCCommand(
+    override val environment: IEnvironment,
     override val inputStream: IStream,
     override val outputStream: OStream,
     override val errorStream: OStream,
@@ -72,6 +74,7 @@ class WCCommand(
 }
 
 class EchoCommand(
+    override val environment: IEnvironment,
     override val inputStream: IStream,
     override val outputStream: OStream,
     override val errorStream: OStream,
@@ -84,6 +87,7 @@ class EchoCommand(
 }
 
 class ExitCommand(
+    override val environment: IEnvironment,
     override val inputStream: IStream,
     override val outputStream: OStream,
     override val errorStream: OStream,
@@ -95,18 +99,20 @@ class ExitCommand(
 }
 
 class PWDCommand(
+    override val environment: IEnvironment,
     override val inputStream: IStream,
     override val outputStream: OStream,
     override val errorStream: OStream,
     override val args: List<String>
 ) : Command {
     override fun execute(): ExecutionResult {
-        outputStream.writeLine(Paths.get("").toAbsolutePath().toString())
+        outputStream.writeLine(environment.currentDirectory.toString())
         return ExecutionResult(0, false)
     }
 }
 
 class GrepCommand(
+    override val environment: IEnvironment,
     override val inputStream: IStream,
     override val outputStream: OStream,
     override val errorStream: OStream,
@@ -119,7 +125,7 @@ class GrepCommand(
             return ExecutionResult(-1, false)
         }
 
-        val file = File(flags.source)
+        val file = environment.currentDirectory.resolve(flags.source).toFile()
         if (!file.exists()) {
             errorStream.writeLine("Input file not found")
             return ExecutionResult(-1, false)
@@ -180,18 +186,18 @@ class GrepCommand(
 }
 
 class AssignCommand(
+    override val environment: IEnvironment,
     override val inputStream: IStream,
     override val outputStream: OStream,
     override val errorStream: OStream,
     override val args: List<String>,
-    private val envWriter: EnvironmentWriter
 ) : Command {
     override fun execute(): ExecutionResult {
         return try {
             if (args.size < 2) {
                 throw IllegalArgumentException("Cannot execute assign command with less than 2 parameters")
             }
-            envWriter.setVariable(args[0], args[1])
+            environment.setVariable(args[0], args[1])
             ExecutionResult(0, false)
         } catch (e: Exception) {
             ExecutionResult(-1, false)
@@ -200,6 +206,7 @@ class AssignCommand(
 }
 
 class ExternalCommand(
+    override val environment: IEnvironment,
     override val inputStream: IStream,
     override val outputStream: OStream,
     override val errorStream: OStream,
@@ -208,6 +215,7 @@ class ExternalCommand(
     override fun execute(): ExecutionResult {
         return try {
             val returnCode = ProcessBuilder(args)
+                .directory(environment.currentDirectory.toFile())
                 .redirectOutput(ProcessBuilder.Redirect.INHERIT)
                 .redirectError(ProcessBuilder.Redirect.INHERIT)
                 .start()
@@ -215,6 +223,62 @@ class ExternalCommand(
             ExecutionResult(returnCode, false)
         } catch (e: Exception) {
             ExecutionResult(-1, false)
+        }
+    }
+}
+
+class CDCommand(
+    override val environment: IEnvironment,
+    override val inputStream: IStream,
+    override val outputStream: OStream,
+    override val errorStream: OStream,
+    override val args: List<String>
+) : Command {
+    private val homeDir = System.getProperty("user.home")
+    override fun execute(): ExecutionResult {
+        environment.currentDirectory = when (args.size) {
+            0 -> Paths.get(homeDir).toAbsolutePath()
+            1 -> {
+                try {
+                    environment.currentDirectory.resolve(args[0]).toAbsolutePath()
+                } catch (e: InvalidPathException) {
+                    errorStream.writeLine("Incorrect path: ${args[0]}")
+                    return ExecutionResult(-1, false)
+                }
+            }
+            else -> {
+                errorStream.writeLine("Too many arguments for cd")
+                return ExecutionResult(-1, false)
+            }
+        }
+        return ExecutionResult(0, false)
+    }
+}
+
+class LSCommand(
+    override val environment: IEnvironment,
+    override val inputStream: IStream,
+    override val outputStream: OStream,
+    override val errorStream: OStream,
+    override val args: List<String>
+) : Command {
+    override fun execute(): ExecutionResult {
+        val path = when (args.size) {
+            0 -> environment.currentDirectory
+            1 -> environment.currentDirectory.resolve(args[0])
+            else -> {
+                errorStream.writeLine("Too many arguments for ls")
+                return ExecutionResult(-1, false)
+            }
+        }
+        if (path.exists() && path.isDirectory()) {
+            path.listDirectoryEntries().forEach {
+                outputStream.writeLine(it.name)
+            }
+            return ExecutionResult(0, false)
+        }
+        else {
+            return ExecutionResult(-1, false)
         }
     }
 }

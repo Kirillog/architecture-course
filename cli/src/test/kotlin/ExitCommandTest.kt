@@ -4,6 +4,7 @@ class ExitCommandTest {
     @org.junit.jupiter.api.Test
     fun `test exit command`() {
         val command = ExitCommand(
+            MockEnvironment(),
             MockIStream(),
             MockOStream(),
             MockOStream(),

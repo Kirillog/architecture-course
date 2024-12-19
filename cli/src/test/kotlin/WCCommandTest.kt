@@ -7,6 +7,7 @@ class WCCommandTest {
         val outputBuffer = StringBuilder()
         val inputFileText = object {}::class.java.getResource("statement.txt").readText()
         val command = WCCommand(
+            Environment(),
             inputFileText.asIStream(),
             outputBuffer.asOStream(),
             StringBuilder().asOStream(),
@@ -23,6 +24,7 @@ class WCCommandTest {
         val resourcesPath = Paths.get("src", "test", "resources").toString()
         val inputFilePath = joinPaths(resourcesPath, fileName)
         val command = WCCommand(
+            Environment(),
             MockIStream(),
             outputBuffer.asOStream(),
             MockOStream(),

@@ -6,6 +6,7 @@ class EchoCommandTest {
         val outputBuffer = StringBuilder()
         val arguments = listOf("stay", "out", "of", "my", "territory")
         val command = EchoCommand(
+            MockEnvironment(),
             MockIStream(),
             outputBuffer.asOStream(),
             MockOStream(),
